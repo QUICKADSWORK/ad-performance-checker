@@ -59,3 +59,37 @@ Open [http://localhost:8050](http://localhost:8050).
 ## Port
 
 Default port is **8050**. Set `PORT` in the environment to change it.
+
+---
+
+## Deploy on Render
+
+1. Push this repo to GitHub (e.g. [QUICKADSWORK/ad-performance-checker](https://github.com/QUICKADSWORK/ad-performance-checker)).
+2. Go to [dashboard.render.com](https://dashboard.render.com) → **New** → **Blueprint**.
+3. Connect your GitHub account and select the `ad-performance-checker` repo.
+4. Render will read `render.yaml` and create a **Web Service** (build: `pip install -r requirements.txt`, start: `uvicorn main:app --host 0.0.0.0 --port $PORT`).
+5. Click **Apply**; after the deploy finishes, your app will be live at `https://<service-name>.onrender.com`.
+
+No env vars or disk are required. The app is stateless.
+
+---
+
+## Push to a new GitHub repo
+
+1. **Create a new repo on GitHub**  
+   Go to [github.com/new](https://github.com/new), name it (e.g. `ad-performance-checker`), leave it **empty** (no README, no .gitignore).
+
+2. **Add the remote and push** (replace `YOUR_USERNAME` and `YOUR_REPO` with your GitHub username and repo name):
+
+   ```bash
+   cd ad-performance-checker
+   git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
+   git push -u origin main
+   ```
+
+   If you use SSH:
+
+   ```bash
+   git remote add origin git@github.com:YOUR_USERNAME/YOUR_REPO.git
+   git push -u origin main
+   ```
