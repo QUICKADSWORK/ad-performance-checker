@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ad Performance Checker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>Ad Performance Checker</h1>
+      <p>Creative scoring · Ad score · ROAS · Improvements</p>
+    </header>
+
+    <section class="form-card">
+      <h2>Ad metrics</h2>
+      <form id="metrics-form" class="form-grid">
+        <div class="form-group">
+          <label for="ad_spend">Ad spend ($)</label>
+          <input type="number" id="ad_spend" name="ad_spend" min="0" step="0.01" value="500">
+        </div>
+        <div class="form-group">
+          <label for="revenue">Revenue ($)</label>
+          <input type="number" id="revenue" name="revenue" min="0" step="0.01" value="1200">
+        </div>
+        <div class="form-group">
+          <label for="impressions">Impressions</label>
+          <input type="number" id="impressions" name="impressions" min="0" value="50000">
+        </div>
+        <div class="form-group">
+          <label for="clicks">Clicks</label>
+          <input type="number" id="clicks" name="clicks" min="0" value="750">
+        </div>
+        <div class="form-group">
+          <label for="engagements">Engagements</label>
+          <input type="number" id="engagements" name="engagements" min="0" value="1500">
+        </div>
+        <div class="form-group">
+          <label for="conversions">Conversions</label>
+          <input type="number" id="conversions" name="conversions" min="0" value="45">
+        </div>
+        <div class="form-group check-group">
+          <input type="checkbox" id="has_video" name="has_video">
+          <label for="has_video">Video ad</label>
+        </div>
+        <div class="form-group">
+          <label for="video_views">Video views</label>
+          <input type="number" id="video_views" name="video_views" min="0" value="0">
+        </div>
+        <div class="form-group">
+          <label for="video_completion_100" title="Number of viewers who watched the entire video (from start to end). Used for video ad creative scoring.">Watched to end</label>
+          <input type="number" id="video_completion_100" name="video_completion_100" min="0" value="0" placeholder="count">
+        </div>
+        <div class="form-group full-width">
+          <label for="headline">Headline</label>
+          <input type="text" id="headline" name="headline" class="long" placeholder="e.g. Summer Sale – 30% Off">
+        </div>
+        <div class="form-group full-width">
+          <label for="primary_text">Primary text</label>
+          <input type="text" id="primary_text" name="primary_text" class="long" placeholder="e.g. Limited time offer. Free shipping over $50.">
+        </div>
+        <div class="form-group">
+          <label for="cta">CTA button</label>
+          <input type="text" id="cta" name="cta" placeholder="e.g. Shop Now">
+        </div>
+        <div class="form-group full-width">
+          <button type="submit" class="btn-analyze" id="btn-analyze">Analyze performance</button>
+        </div>
+      </form>
+      <div class="error-message" id="error-message"></div>
+    </section>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p>Analyzing ad performance…</p>
+    </div>
+
+    <section class="results" id="results">
+      <div class="scores-row">
+        <div class="score-card">
+          <h3>Creative score</h3>
+          <div class="score-value creative" id="creative-score-value">—</div>
+          <div class="score-grade" id="creative-grade">—</div>
+          <div class="sub" id="creative-sub">How your creative performs</div>
+        </div>
+        <div class="score-card">
+          <h3>Ad score</h3>
+          <div class="score-value ad" id="ad-score-value">—</div>
+          <div class="score-grade" id="ad-grade">—</div>
+          <div class="sub" id="ad-sub">Overall performance</div>
+        </div>
+        <div class="score-card">
+          <h3>ROAS</h3>
+          <div class="score-value roas" id="roas-value">—</div>
+          <div class="score-grade" id="roas-label">—</div>
+          <div class="sub" id="roas-sub">Return on ad spend</div>
+        </div>
+      </div>
+
+      <div class="creative-breakdown">
+        <h3>Creative breakdown</h3>
+        <div class="component-list" id="component-list"></div>
+      </div>
+
+      <div class="improvements">
+        <h3>Improvements</h3>
+        <div class="improvement-list" id="improvement-list"></div>
+        <p class="no-improvements" id="no-improvements" style="display: none;">No specific improvements right now. Keep monitoring key metrics.</p>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const form = document.getElementById('metrics-form');
+    const results = document.getElementById('results');
+    const loading = document.getElementById('loading');
+    const errorEl = document.getElementById('error-message');
+    const btnAnalyze = document.getElementById('btn-analyze');
+
+    function showError(msg) {
+      errorEl.textContent = msg || 'Something went wrong.';
+      errorEl.classList.add('visible');
+    }
+
+    function clearError() {
+      errorEl.classList.remove('visible');
+    }
+
+    function getPayload() {
+      return {
+        ad_spend: parseFloat(document.getElementById('ad_spend').value) || 0,
+        revenue: parseFloat(document.getElementById('revenue').value) || 0,
+        impressions: parseInt(document.getElementById('impressions').value, 10) || 0,
+        clicks: parseInt(document.getElementById('clicks').value, 10) || 0,
+        engagements: parseInt(document.getElementById('engagements').value, 10) || 0,
+        conversions: parseInt(document.getElementById('conversions').value, 10) || 0,
+        has_video: document.getElementById('has_video').checked,
+        video_views: parseInt(document.getElementById('video_views').value, 10) || 0,
+        video_completion_25: 0,
+        video_completion_50: 0,
+        video_completion_75: 0,
+        video_completion_100: parseInt(document.getElementById('video_completion_100').value, 10) || 0,
+        headline: document.getElementById('headline').value.trim(),
+        primary_text: document.getElementById('primary_text').value.trim(),
+        cta: document.getElementById('cta').value.trim(),
+      };
+    }
+
+    function renderResults(data) {
+      const cs = data.creative_score || {};
+      const as = data.ad_score || {};
+      const roas = data.roas || {};
+
+      document.getElementById('creative-score-value').textContent = cs.score != null ? cs.score : '—';
+      document.getElementById('creative-grade').textContent = cs.grade || '—';
+
+      document.getElementById('ad-score-value').textContent = as.score != null ? as.score : '—';
+      document.getElementById('ad-grade').textContent = as.grade || '—';
+      if (as.creative_contribution != null && as.roas_contribution != null) {
+        document.getElementById('ad-sub').textContent = `Creative ${as.creative_contribution} · ROAS ${as.roas_contribution}`;
+      }
+
+      document.getElementById('roas-value').textContent = roas.formatted || '—';
+      document.getElementById('roas-label').textContent = roas.label || '—';
+      if (roas.revenue != null && roas.spend != null && roas.spend > 0) {
+        document.getElementById('roas-sub').textContent = `$${roas.revenue.toLocaleString()} revenue / $${roas.spend.toLocaleString()} spend`;
+      }
+
+      const compList = document.getElementById('component-list');
+      compList.innerHTML = '';
+      (cs.components || []).forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'component-item';
+        div.innerHTML = `
+          <span class="name">${escapeHtml(c.name)}</span>
+          <span>
+            <span class="score ${(c.tier || '').replace(' ', '_')}">${c.score}</span>
+            <span class="value">${escapeHtml(c.value)}</span>
+          </span>
+        `;
+        compList.appendChild(div);
+      });
+
+      const impList = document.getElementById('improvement-list');
+      const noImp = document.getElementById('no-improvements');
+      impList.innerHTML = '';
+      const improvements = data.improvements || [];
+      if (improvements.length === 0) {
+        noImp.style.display = 'block';
+      } else {
+        noImp.style.display = 'none';
+        improvements.forEach(i => {
+          const div = document.createElement('div');
+          div.className = `improvement-item priority-${i.priority || 'medium'}`;
+          div.innerHTML = `
+            <div class="title">${escapeHtml(i.title)}</div>
+            <div class="detail">${escapeHtml(i.detail)}</div>
+            <div class="meta">${escapeHtml(i.category)} · ${escapeHtml(i.metric || '')}</div>
+          `;
+          impList.appendChild(div);
+        });
+      }
+
+      results.classList.add('visible');
+      results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function escapeHtml(s) {
+      if (s == null) return '';
+      const p = document.createElement('p');
+      p.textContent = s;
+      return p.innerHTML;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearError();
+      loading.classList.add('visible');
+      results.classList.remove('visible');
+      btnAnalyze.disabled = true;
+
+      try {
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(getPayload()),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Analysis failed');
+        renderResults(data);
+      } catch (err) {
+        showError(err.message || 'Request failed');
+      } finally {
+        loading.classList.remove('visible');
+        btnAnalyze.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
